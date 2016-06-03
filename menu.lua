@@ -19,7 +19,7 @@ local playBtn
 local function onPlayBtnRelease()
 	
 	-- go to level1.lua scene
-	composer.gotoScene( "level1", "fade", 500 )
+	composer.gotoScene( "hitmonchan_game_scene", "fade", 500 )
 	
 	return true	-- indicates successful touch
 end
