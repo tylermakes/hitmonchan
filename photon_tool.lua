@@ -10,6 +10,7 @@ PhotonTool = class(function(c)
 	c.Logger = nil
 	c.photon = nil
 	c.client = nil
+	c.ENDCONNECTION = false -- TODO: get rid of this
 end)
 
 function PhotonTool:create()
@@ -19,7 +20,7 @@ function PhotonTool:create()
 	    self.LoadBalancingClient = self.photon.loadbalancing.LoadBalancingClient
 	    self.LoadBalancingConstants = self.photon.loadbalancing.constants
 	    self.Logger = self.photon.common.Logger
-	    self.tableutil = self.photon.common.util.tableutil    
+	    self.tableutil = self.photon.common.util.tableutil  
 	else  -- or load photon.lua module
 	    print("Demo: main module:","Lua lib used")
 	    self.photon = require("photon")
@@ -28,38 +29,98 @@ function PhotonTool:create()
 	    self.Logger = require("photon.common.Logger")
 	    self.tableutil = require("photon.common.util.tableutil")    
 	end
-	self.client = self.LoadBalancingClient.new(photonAppInfo.MasterAddress, photonAppInfo.AppId, photonAppInfo.AppVersion)
-	self.client:connect()
 
+	-- Reference to PhotonTool used for client functions
+	local tool = self
+	
+	local client = self.LoadBalancingClient.new(photonAppInfo.MasterAddress, photonAppInfo.AppId, photonAppInfo.AppVersion)
 
 	local EVENT_CODE = 101 -- TODO: actually make this communicate useful information
 
 	-- send data doesn't work yet, we need to join a room
-	function self.client:sendData()
+	function client:sendData()
 		print("is joined?", self:isJoinedToRoom())
 		if self:isJoinedToRoom() then
 			local data = {}
 			data[2] = "This is our data!"
 			data[3] = string.rep("x", 160)
-			self:raiseEvent(EVENT_CODE, data, { receivers = LoadBalancingConstants.ReceiverGroup.All } ) 
+			self:raiseEvent(EVENT_CODE, data, { receivers = tool.LoadBalancingConstants.ReceiverGroup.All } ) 
 		end
 	end
 
+	function client:onOperationResponse(errorCode, errorMsg, code, content)
+		print("========OPERATION RESPONSE ec:", errorCode, " er:", errorMsg, " c:", code, " table:", tool.tableutil.toStringReq(content))
+    end
+
 	-- on event isn't triggered yet because our data isn't being sent
-	function self.client:onEvent(code, content, actorNr)
-		self.logger:debug("on event", code, tableutil.toStringReq(content))
+	function client:onEvent(code, content, actorNr)
+		self.logger:debug("on event", code, tool.tableutil.toStringReq(content))
 		if code == EVENT_CODE then
 			print("received1:", content[1])
 			print("received2:", content[2])
 			print("received3:", content[3])
 			self:disconnect();
+			tool.ENDCONNECTION = true;
 		else
 			print("received unknown event")
 		end
 	end
 
-	self.client.logger:info("Start")
-	self.client:sendData();
+	function client:onRoomList(rooms)
+		-- print("==== GOT ROOMS LIST?")
+		-- for k,v in pairs(rooms) do
+		-- 	print(k,v)
+		-- end
+
+		for k,v in pairs(rooms) do
+			print("JOINING:", k)
+			self:joinRoom(k)
+			return
+		end
+		local name = "helloworld"..(math.random()*100)
+		print("CREATING:", name)
+		self:createRoom(name)
+	end
+
+	function client:onStateChange(state)
+		print("state:", state, tostring(tool.LoadBalancingClient.StateToName(state)))
+		if (state == tool.LoadBalancingClient.State.JoinedLobby) then
+		end
+		if (state == tool.LoadBalancingClient.State.Joined) then
+
+		end
+	end
+
+	client.logger:info("Start")
+	client:connect()
+	self.runTimes = 0
+	self.client = client
+	self.timerTable = timer.performWithDelay( 100, self, 0)	-- TODO: test that table can be used to cancel timer
+end
+
+function PhotonTool:printAvailableRooms()
+	local availableRooms = self.client:availableRooms()
+	print("==========available rooms:")
+	for k,v in pairs(availableRooms) do
+		print("kv:",k,v)
+	end
+	if (#availableRooms > 0) then
+		print("availRoom:",availableRooms[0])
+	end
+end
+
+function PhotonTool:update()
+    self.client:sendData()
+    self.client:service()
+	--print(self.client:availableRooms())
+end
+
+function PhotonTool:timer(event)
+	local str = nil
+	self:update()
+	if (self.ENDCONNECTION) then
+		timer.cancel(event.source)
+	end
 end
 
 function PhotonTool:removeSelf()
