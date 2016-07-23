@@ -1,3 +1,6 @@
+require("photon_tool")
+require("hit_tools")
+
 -----------------------------------------------------------------------------------------
 --
 -- main.lua
@@ -12,6 +15,10 @@ local composer = require "composer"
 
 -- load app info for Photon Cloud
 photonAppInfo = require("cloud-app-info")
+photonTool = PhotonTool()
+photonTool:create()
+
+hitTools = HitTools(display.width, display.height, composer)
 
 -- load menu screen
-composer.gotoScene( "hit_game_scene" )
+composer.gotoScene( "hit_lobby_scene" )
