@@ -11,7 +11,7 @@ HitLobby = class(function(c, width, height, composer)
 	c.roomColumns = 3
 	c.roomButtons = nil
 	c.roomButtonWidth = c.width/3
-	c.roomButtonHeight = c.roomButtonWidth
+	c.roomButtonHeight = c.height/10
 	c.lobbyDisplay = nil
 end)
 
@@ -26,9 +26,40 @@ function HitLobby:create(group)
 	background.y = 0;
 	self.background = background
 	self.lobbyDisplay:insert(self.background)
+	
+
+	local lobby = self
+	function handleCreateRoom( )
+		local name = "room:"..(math.random()*100)
+		print("CREATING:", name)
+		photonTool:createRoom(name)
+	end
+
+
+	-- Create the widget
+	local createRoomButton = widget.newButton(
+		{
+			left = 0,
+			top = 0,
+			id = "createRoomButton",
+			shape = "roundedRect",
+			fillColor = { default={ 1, 0.2, 0.5, 0.7 }, over={ 1, 0.2, 0.5, 1 } },
+			labelColor = { default={ 0, 0.0, 0.0 }, over={ 0, 0.0, 0.0 } },
+			label = "Create New Room",
+			width = self.width,
+			height = self.roomButtonHeight,
+			onRelease = handleCreateRoom,
+			fontSize = 24
+		}
+	);
+
+	self.createRoomButton = createRoomButton
+	self.lobbyDisplay:insert(self.createRoomButton)
+
 	group:insert(self.lobbyDisplay)
 
 	photonTool:addEventListener("connected", self)
+	photonTool:addEventListener("joined", self)
 	photonTool:connect()
 end
 
@@ -40,13 +71,22 @@ function HitLobby:connected(evt)
 	for i=1, #evt.rooms do
 		ri = i - 1
 		x = ri % self.roomColumns * self.roomButtonWidth
-		y = math.floor(ri/self.roomColumns) * self.roomButtonHeight
+		y = math.floor(ri/self.roomColumns) * self.roomButtonHeight + self.roomButtonHeight
 		local roomButton = HitRoomButton(evt.rooms[i].name, x, y, self.roomButtonWidth, self.roomButtonHeight)
 		roomButton:create(self.lobbyDisplay)
+		roomButton:addEventListener("joinRoom", self)
 		self.roomButtons[#self.roomButtons + 1] = roomButton
 	end
 
 	hitTools:printObject(evt.rooms, 4, "*")
+end
+
+function HitLobby:joined(evt)
+	self.composer.gotoScene( "hit_game_scene", { params = evt } )
+end
+
+function HitLobby:joinRoom(evt)
+	photonTool:joinRoom(evt.room)
 end
 
 function HitLobby:removeSelf()

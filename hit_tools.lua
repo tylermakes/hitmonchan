@@ -47,3 +47,22 @@ function HitTools:printObject(obj, maxDepth, indentor, indentation, depth)
 	end
 
 end
+
+function HitTools:makeEventDispatcher(obj)
+	obj.events = {}
+
+	function obj:addEventListener(type, object)
+		if (not self.events[type]) then
+			self.events[type] = {}
+		end
+		self.events[type][#self.events[type] + 1] = object
+	end
+
+	function obj:dispatchEvent(data)
+		if (self.events[data.name]) then
+			for i=1, #self.events[data.name] do
+				self.events[data.name][i][data.name](self.events[data.name][i], data)
+			end
+		end
+	end
+end

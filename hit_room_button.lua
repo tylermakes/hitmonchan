@@ -8,45 +8,45 @@ HitRoomButton = class(function(c, label, x, y, width, height, composer)
 	c.label = label
 	c.labelView = nil
 	c.buttonDisplay = nil
+	hitTools:makeEventDispatcher(c)
 end)
 
 function HitRoomButton:create(group)
 	self.buttonDisplay = display.newGroup()
 
-	local background = display.newRect( 0, 0, self.width, self.height )
-	background:setFillColor( hitTools:randomColor(), hitTools:randomColor(), hitTools:randomColor() )
-	background.anchorX = 0
-	background.anchorY = 0
-	background.x = 0
-	background.y = 0
-	self.background = background
-	self.buttonDisplay:insert(self.background)
+	local roomButton = self
+	function handleJoinRoom( )
+		local joinEvent = {
+			name = "joinRoom",
+			room = roomButton.label
+		}
+		roomButton:dispatchEvent(joinEvent)
+	end
 
-	-- ADD LABEL TEXT
-	local labelOptions = {
-		text = self.label,
-		x = 0,
-		y = 0,
-		width = self.width,
-		height = self.height,
-		font = native.systemFont,
-		fontSize = 24, 
-		align = "left"
-	}
-	local labelView = display.newText( labelOptions )
-	labelView:setFillColor( 0, 0, 0 )
-	labelView.anchorX = 0
-	labelView.anchorY = 0
-	labelView.x = 0
-	labelView.y = 0
-	self.labelView = labelView
-	self.buttonDisplay:insert(self.labelView)
+	local mainButton = widget.newButton(
+		{
+			left = 0,
+			top = 0,
+			id = "mainButton",
+			label = self.label,
+			labelColor = { default={ 0, 0.0, 0.0 }, over={ 0, 0.0, 0.0 } },
+			onRelease = handleJoinRoom,
+			fontSize = 24,
+			shape = "roundedRect",
+			fillColor = { default={ 1, 0.2, 0.5, 0.7 }, over={ 1, 0.2, 0.5, 1 } },
+			width = self.width,
+			height = self.height,
+		}
+	);
 
+	self.mainButton = mainButton
+	self.buttonDisplay:insert(self.mainButton)
 
 	self.buttonDisplay.anchorX = 0;
 	self.buttonDisplay.anchorY = 0;
 	self.buttonDisplay.x = self.x;
 	self.buttonDisplay.y = self.y;
+	group:insert(self.buttonDisplay)
 end
 
 function HitRoomButton:removeSelf()
@@ -54,9 +54,9 @@ function HitRoomButton:removeSelf()
 		self.background:removeSelf()
 		self.background = nil
 	end
-	if (self.labelView) then
-		self.labelView:removeSelf()
-		self.labelView = nil
+	if (self.mainButton) then
+		self.mainButton:removeSelf()
+		self.mainButton = nil
 	end
 	if (self.buttonDisplay) then
 		self.buttonDisplay:removeSelf()

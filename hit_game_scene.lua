@@ -14,7 +14,7 @@ local game
 -- Called when the scene's view does not exist:
 function scene:create( event )
 	local group = self.view
-	game = HitGame(display.contentWidth, display.contentHeight, composer)
+	game = HitGame(display.contentWidth, display.contentHeight, event.params.createdByMe, composer)
 	game:create(group)
 end
 

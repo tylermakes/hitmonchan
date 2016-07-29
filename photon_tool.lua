@@ -12,10 +12,15 @@ PhotonTool = class(function(c)
 	c.photon = nil
 	c.client = nil
 	c.state = "none"
-	c.events = {}
+	hitTools:makeEventDispatcher(c)
+	-- c.events = {}
 	c.ENDCONNECTION = false -- TODO: get rid of this
 	c.basicRoomOptions = {
+		--createIfNotExists = true -- see NOTE under createRoom
+	}
+	c.basicRoomCreateOptions = {
 		maxPlayers = 2
+		--uniqueUserId = true
 	}
 end)
 
@@ -82,8 +87,8 @@ function PhotonTool:create()
 		-- Following code auto joins room if available, else creates a room
 		local roomArray = {}
 		for k,v in pairs(rooms) do
-			print("JOINING:", k)
-			self:joinRoom(k)
+			-- print("JOINING:", k)
+			-- self:joinRoom(k, tool.basicRoomOptions, tool.basicRoomCreateOptions)
 			roomArray[#roomArray + 1] = v
 		end
 
@@ -95,10 +100,6 @@ function PhotonTool:create()
 			tool:dispatchEvent(connectedEvent)
 			return
 		end
-		
-		local name = "helloworld"..(math.random()*100)
-		print("CREATING:", name)
-		self:createRoom(name, self.basicRoomOptions)
 	end
 
 	function client:onStateChange(state)
@@ -106,8 +107,22 @@ function PhotonTool:create()
 		if (state == tool.LoadBalancingClient.State.JoinedLobby) then
 			print("joined lobby")
 		end
-		if (state == tool.LoadBalancingClient.State.Joined) then
-		end
+		-- using onJoinRoom instead
+		-- if (state == tool.LoadBalancingClient.State.Joined) then
+		-- 	local joinedEvent = {
+		-- 		name = "joined"
+		-- 	}
+		-- 	tool:dispatchEvent(joinedEvent)
+		-- end
+	end
+
+	function client:onJoinRoom(createdByMe)
+		print("JOINED:",createdByMe)
+		local joinedEvent = {
+			name = "joined",
+			createdByMe = createdByMe
+		}
+		tool:dispatchEvent(joinedEvent)
 	end
 
 	self.client = client
@@ -149,20 +164,31 @@ function PhotonTool:timer(event)
 	end
 end
 
-function PhotonTool:addEventListener(type, object)
-	if (not self.events[type]) then
-		self.events[type] = {}
-	end
-	self.events[type][#self.events[type] + 1] = object
+function PhotonTool:joinRoom(roomName)
+	self.client:joinRoom(roomName, self.basicRoomOptions, self.basicRoomCreateOptions)
 end
 
-function PhotonTool:dispatchEvent(data)
-	if (self.events[data.name]) then
-		for i=1, #self.events[data.name] do
-			self.events[data.name][i][data.name](self.events[data.name][i], data)
-		end
-	end
+function PhotonTool:createRoom(roomName)
+	-- NOTE: joinRoom with the option "createIfNotExists" will join the room, but will
+	-- NOT say that it was created by this user, so we're using the separate creatRoom
+	-- and joinRoom methods.
+	self.client:createRoom(roomName, self.basicRoomOptions, self.basicRoomCreateOptions)
 end
+
+-- function PhotonTool:addEventListener(type, object)
+-- 	if (not self.events[type]) then
+-- 		self.events[type] = {}
+-- 	end
+-- 	self.events[type][#self.events[type] + 1] = object
+-- end
+
+-- function PhotonTool:dispatchEvent(data)
+-- 	if (self.events[data.name]) then
+-- 		for i=1, #self.events[data.name] do
+-- 			self.events[data.name][i][data.name](self.events[data.name][i], data)
+-- 		end
+-- 	end
+-- end
 
 function PhotonTool:removeSelf()
 	-- TODO: remove events
