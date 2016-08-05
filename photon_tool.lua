@@ -105,7 +105,15 @@ function PhotonTool:create()
 	function client:onStateChange(state)
 		print("state:", state, tostring(tool.LoadBalancingClient.StateToName(state)))
 		if (state == tool.LoadBalancingClient.State.JoinedLobby) then
-			print("joined lobby")
+			--print("joined lobby")
+			local joinedEvent = {
+				name = "joinedLobby"
+			}
+			tool:dispatchEvent(joinedEvent)
+		end
+		if (state == tool.LoadBalancingClient.State.Error) then
+			print("ERROR!!!")
+			hitTools:printObject(state,4)
 		end
 		-- using onJoinRoom instead
 		-- if (state == tool.LoadBalancingClient.State.Joined) then
@@ -122,6 +130,16 @@ function PhotonTool:create()
 			name = "joined",
 			createdByMe = createdByMe
 		}
+		tool:dispatchEvent(joinedEvent)
+	end
+
+	function client:onActorJoin(actor)
+		print("ACTOR JOINING:")
+		local joinedEvent = {
+			name = "actorJoined",
+			actorName = actor.name
+		}
+		hitTools:printObject(actor, 3)
 		tool:dispatchEvent(joinedEvent)
 	end
 
@@ -175,20 +193,31 @@ function PhotonTool:createRoom(roomName)
 	self.client:createRoom(roomName, self.basicRoomOptions, self.basicRoomCreateOptions)
 end
 
--- function PhotonTool:addEventListener(type, object)
--- 	if (not self.events[type]) then
--- 		self.events[type] = {}
--- 	end
--- 	self.events[type][#self.events[type] + 1] = object
--- end
+function PhotonTool:setName(name)
+	self.client:myActor():setName(name)
+end
 
--- function PhotonTool:dispatchEvent(data)
--- 	if (self.events[data.name]) then
--- 		for i=1, #self.events[data.name] do
--- 			self.events[data.name][i][data.name](self.events[data.name][i], data)
--- 		end
--- 	end
--- end
+function PhotonTool:getName(name)
+	return self.client:myActor().name
+end
+
+function PhotonTool:getOtherActor()
+	local actors = self.client:myRoomActors()
+	local myActorNumber = self.client:myActor().actorNr
+	print("myActorNum:", myActorNumber)
+	for i=1,#actors do
+		print("actors in room:", actors[i].actorNr, ", ", actors[i].name)
+		if (actors[i].actorNr ~= myActorNumber) then
+			return actors[i]
+		end
+	end
+	return nil
+end
+
+function PhotonTool:getRoomActors()
+	print("ACTORS:")
+	hitTools:printObject(self.client:myRoomActors(), 5)
+end
 
 function PhotonTool:removeSelf()
 	-- TODO: remove events

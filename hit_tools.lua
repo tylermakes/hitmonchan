@@ -20,6 +20,9 @@ function HitTools:printObject(obj, maxDepth, indentor, indentation, depth)
 	if (indentor == nil) then
 		indentor = "="
 	end
+	if (maxDepth == nil) then
+		maxDepth = 3
+	end
 
 	if (depth > maxDepth) then
 		print(indentation, "MAX DEPTH EXCEEDED")
@@ -38,6 +41,21 @@ function HitTools:printObject(obj, maxDepth, indentor, indentation, depth)
 	
 	if (type(obj) == "boolean") then
 		print(indentation, obj)
+		return
+	end
+	
+	if (type(obj) == "boolean") then
+		print(indentation, obj)
+		return
+	end
+	
+	if (type(obj) == "function") then
+		print(indentation, obj)
+		return
+	end
+	
+	if (type(obj) == "userdata") then
+		--print(indentation, obj)
 		return
 	end
 

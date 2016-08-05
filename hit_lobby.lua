@@ -54,12 +54,14 @@ function HitLobby:create(group)
 	);
 
 	self.createRoomButton = createRoomButton
+	self.createRoomButton.alpha = 0
 	self.lobbyDisplay:insert(self.createRoomButton)
 
 	group:insert(self.lobbyDisplay)
 
 	photonTool:addEventListener("connected", self)
 	photonTool:addEventListener("joined", self)
+	photonTool:addEventListener("joinedLobby", self)
 	photonTool:connect()
 end
 
@@ -77,6 +79,7 @@ function HitLobby:connected(evt)
 		roomButton:addEventListener("joinRoom", self)
 		self.roomButtons[#self.roomButtons + 1] = roomButton
 	end
+	photonTool:setName(GLOBAL_NAME)
 
 	hitTools:printObject(evt.rooms, 4, "*")
 end
@@ -85,7 +88,12 @@ function HitLobby:joined(evt)
 	self.composer.gotoScene( "hit_game_scene", { params = evt } )
 end
 
+function HitLobby:joinedLobby(evt)
+	self.createRoomButton.alpha = 1
+end
+
 function HitLobby:joinRoom(evt)
+	self.createRoomButton.alpha = 0
 	photonTool:joinRoom(evt.room)
 end
 
