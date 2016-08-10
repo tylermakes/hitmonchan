@@ -14,6 +14,7 @@ PhotonTool = class(function(c)
 	c.state = "none"
 	hitTools:makeEventDispatcher(c)
 	-- c.events = {}
+	c.END_CONNECTION_CODE = 100 -- TODO: get rid of this
 	c.ENDCONNECTION = false -- TODO: get rid of this
 	c.basicRoomOptions = {
 		--createIfNotExists = true -- see NOTE under createRoom
@@ -47,19 +48,6 @@ function PhotonTool:create()
 	local client = self.LoadBalancingClient.new(photonAppInfo.MasterAddress, photonAppInfo.AppId, photonAppInfo.AppVersion)
 	client:setLogLevel(self.Logger.Level.FATAL) -- limits to fatal logs, remove to see what Photon is doing
 
-	local EVENT_CODE = 101 -- TODO: actually make this communicate useful information
-
-	-- send data doesn't work yet, we need to join a room
-	function client:sendData()
-		--print("is joined?", self:isJoinedToRoom())
-		if self:isJoinedToRoom() then
-			local data = {}
-			data[2] = "This is our data!"
-			data[3] = string.rep("x", 160)
-			self:raiseEvent(EVENT_CODE, data, { receivers = tool.LoadBalancingConstants.ReceiverGroup.All } ) 
-		end
-	end
-
 	function client:onOperationResponse(errorCode, errorMsg, code, content)
 		print("========OPERATION RESPONSE ec:", errorCode, " er:", errorMsg, " c:", code, " table:", tool.tableutil.toStringReq(content))
     end
@@ -67,34 +55,29 @@ function PhotonTool:create()
 	-- on event isn't triggered yet because our data isn't being sent
 	function client:onEvent(code, content, actorNr)
 		self.logger:debug("on event", code, tool.tableutil.toStringReq(content))
-		if code == EVENT_CODE then
-			print("received1:", content[1])
-			print("received2:", content[2])
-			print("received3:", content[3])
+		if code == self.END_CONNECTION_CODE then
 			self:disconnect();
 			tool.ENDCONNECTION = true;
 		else
-			print("received unknown event")
+			local messageEvent = {
+				name = "receivedMessage",
+				code = code,
+				content = content,
+				actorNr = actorNr
+			}
+			tool:dispatchEvent(messageEvent)
 		end
 	end
 
 	function client:onRoomList(rooms)
-		-- print("==== GOT ROOMS LIST?")
-		-- for k,v in pairs(rooms) do
-		-- 	print(k,v)
-		-- end
-
-		-- Following code auto joins room if available, else creates a room
 		local roomArray = {}
 		for k,v in pairs(rooms) do
-			-- print("JOINING:", k)
-			-- self:joinRoom(k, tool.basicRoomOptions, tool.basicRoomCreateOptions)
 			roomArray[#roomArray + 1] = v
 		end
 
 		if (#roomArray >= 1) then
 			local connectedEvent = {
-				name = "connected",
+				name = "handleRoomList",
 				rooms = roomArray
 			}
 			tool:dispatchEvent(connectedEvent)
@@ -139,8 +122,17 @@ function PhotonTool:create()
 			name = "actorJoined",
 			actorName = actor.name
 		}
-		hitTools:printObject(actor, 3)
+		--hitTools:printObject(actor, 3)
 		tool:dispatchEvent(joinedEvent)
+	end
+
+	function client:onActorPropertiesChange (actor)
+		print("ACTOR PROP CHANGED:", actor.id);
+		print("ACTOR PROP CHANGED:", actor.name);
+	end
+
+	function client:onRoomListUpdate( rooms, roomsUpdated, roomsAdded, roomsRemoved )
+		self:onRoomList(rooms)
 	end
 
 	self.client = client
@@ -174,6 +166,12 @@ function PhotonTool:update()
 	--print(self.client:availableRooms())
 end
 
+function PhotonTool:sendData(eventCode, data)
+	if self.client:isJoinedToRoom() then
+		self.client:raiseEvent(eventCode, data, { receivers = self.LoadBalancingConstants.ReceiverGroup.Others } ) 
+	end
+end
+
 function PhotonTool:timer(event)
 	local str = nil
 	self:update()
@@ -197,8 +195,12 @@ function PhotonTool:setName(name)
 	self.client:myActor():setName(name)
 end
 
-function PhotonTool:getName(name)
+function PhotonTool:getName()
 	return self.client:myActor().name
+end
+
+function PhotonTool:getId()
+	return self.client:myActor().actorNr
 end
 
 function PhotonTool:getOtherActor()
@@ -220,5 +222,5 @@ function PhotonTool:getRoomActors()
 end
 
 function PhotonTool:removeSelf()
-	-- TODO: remove events
+	hitTools:removeEventDispatcher(self)
 end

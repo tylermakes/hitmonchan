@@ -50,6 +50,7 @@ function HitRoomButton:create(group)
 end
 
 function HitRoomButton:removeSelf()
+	hitTools:removeEventDispatcher(self)
 	if (self.background) then
 		self.background:removeSelf()
 		self.background = nil

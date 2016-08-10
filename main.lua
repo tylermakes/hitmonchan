@@ -21,6 +21,7 @@ photonAppInfo = require("cloud-app-info")
 photonTool = PhotonTool()
 photonTool:create()
 
+	-- TODO: get rid of this
 	GLOBAL_NAME = "name"..math.random()*1000
 
 -- load menu screen

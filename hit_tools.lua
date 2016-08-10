@@ -84,3 +84,8 @@ function HitTools:makeEventDispatcher(obj)
 		end
 	end
 end
+
+function HitTools:removeEventDispatcher(obj)
+	-- TODO: Implement this!
+	print("WE NEED TO REMOVE EVENT DISPATCHER")
+end

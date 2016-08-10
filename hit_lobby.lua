@@ -59,14 +59,15 @@ function HitLobby:create(group)
 
 	group:insert(self.lobbyDisplay)
 
-	photonTool:addEventListener("connected", self)
+	photonTool:addEventListener("handleRoomList", self) -- Note: the first one of these indicates that we've successfully connected
 	photonTool:addEventListener("joined", self)
 	photonTool:addEventListener("joinedLobby", self)
 	photonTool:connect()
 end
 
-function HitLobby:connected(evt)
+function HitLobby:handleRoomList(evt)
 	print("we are connected! ", #evt.rooms)
+	self:removeRoomButtons()
 	self.rooms = evt.rooms
 	self.roomButtons = {}
 	local x, y, i, ri = 1
@@ -81,7 +82,7 @@ function HitLobby:connected(evt)
 	end
 	photonTool:setName(GLOBAL_NAME)
 
-	hitTools:printObject(evt.rooms, 4, "*")
+	-- hitTools:printObject(evt.rooms, 4, "*")
 end
 
 function HitLobby:joined(evt)
@@ -94,17 +95,24 @@ end
 
 function HitLobby:joinRoom(evt)
 	self.createRoomButton.alpha = 0
+	self:removeRoomButtons() -- TODO: Make sure we get them again if joining the room fails
 	photonTool:joinRoom(evt.room)
+end
+
+function HitLobby:removeRoomButtons()
+	if (self.roomButtons) then
+		for i=1, #self.roomButtons do
+			self.roomButtons[i]:removeSelf()
+			self.roomButtons[i] = nil
+		end
+	end
+	self.rooms = nil
 end
 
 function HitLobby:removeSelf()
 	if (self.background) then
 		self.background:removeSelf()
 		self.background = nil
-	end
-	for i=1, #self.roomButtons do
-		self.roomButtons[i]:removeSelf()
-		self.roomButtons[i] = nil
 	end
 	if (self.lobbyDisplay) then
 		self.lobbyDisplay:removeSelf()
