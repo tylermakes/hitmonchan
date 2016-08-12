@@ -54,7 +54,7 @@ function PhotonTool:create()
 
 	-- on event isn't triggered yet because our data isn't being sent
 	function client:onEvent(code, content, actorNr)
-		self.logger:debug("on event", code, tool.tableutil.toStringReq(content))
+		print("on event", code, tool.tableutil.toStringReq(content))
 		if code == self.END_CONNECTION_CODE then
 			self:disconnect();
 			tool.ENDCONNECTION = true;

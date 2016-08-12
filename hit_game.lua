@@ -11,6 +11,12 @@ HitGame = class(function(c, width, height, createdByMe, composer)
 	c.background = nil
 	c.playerUI = nil
 	c.enemyUI = nil
+	c.initiative = -1
+	c.enemyInitiative = -1
+	c.id = -1
+	c.enemyId = -1
+	c.playerAction = nil
+	c.enemyAction = nil
 
 	------ STATES ------
 	c.INITIALIZING = "initializing"
@@ -23,6 +29,7 @@ HitGame = class(function(c, width, height, createdByMe, composer)
 	------ PHOTON EVENTS ------
 	c.PH_NAME = 101
 	c.PH_READY = 102
+	c.PH_TAKE_ACTION = 103
 	------ /PHOTON EVENTS ------
 
 	c.gameState = c.INITIALIZING
@@ -51,13 +58,14 @@ function HitGame:create(group)
 	self.background = background
 	self.gameDisplay:insert(self.background)
 
-	local playerUI = HitPlayerUI("player", 0, self.height - self.uiHeight, self.width, self.uiHeight)
+	local playerUI = HitPlayerUI("player", true, 0, self.height - self.uiHeight, self.width, self.uiHeight)
 	playerUI:create(self.gameDisplay)
 	self.playerUI = playerUI
 	self.playerUI:setName(photonTool:getName())
 	self.playerUI:addEventListener("ready", self)
+	self.playerUI:addEventListener("takeAction", self)
 
-	local enemyUI = HitPlayerUI("enemy", 0, 0, self.width, self.uiHeight)
+	local enemyUI = HitPlayerUI("enemy", false, 0, 0, self.width, self.uiHeight)
 	enemyUI:create(self.gameDisplay)
 	self.enemyUI = enemyUI
 
@@ -71,12 +79,19 @@ function HitGame:create(group)
 end
 
 function HitGame:receivedMessage(evt)
-	print("NEW ACTOR NAME:", evt.content.name, evt.content.id)
+	-- print("MY ACTOR NAME:", GLOBAL_NAME, self.id, self.initiative)
+	-- print("NEW ACTOR NAME:", evt.content.name, evt.content.id, evt.content.initiative)
+	-- hitTools:printObject(evt, 4, "*")
 	if (evt.code == self.PH_NAME) then
 		self.enemyUI:setName(evt.content.name)
 		self:enterReadyState()
 	elseif (evt.code == self.PH_READY) then
-		self:startGame()
+		self.enemyInitiative = evt.content.initiative
+		self.enemyId = evt.content.id
+		self.enemyUI:showStatus("Ready!")
+		self:startGameIfReady()
+	elseif (evt.code == self.PH_TAKE_ACTION) then
+		self:handleEnemyAction(evt.content.action)
 	end
 end
 
@@ -90,7 +105,35 @@ function HitGame:actorJoined(evt)
 end
 
 function HitGame:ready(evt)
-	photonTool:sendData(self.PH_READY, {id = photonTool:getId(), status = "ready"})
+	self.initiative = math.random()
+	photonTool:sendData(self.PH_READY, {id = photonTool:getId(),
+					status = "ready", initiative = self.initiative})
+	self:startGameIfReady()
+end
+
+function HitGame:takeAction(evt)
+	photonTool:sendData(self.PH_TAKE_ACTION, {id = photonTool:getId(),
+					status = "action", action = evt.action})
+	self.playerAction = evt.action
+	local result = self:isRoundComplete()
+	if (result) then
+		print("GAME OVER, winner:", self:isRoundComplete())
+		if (result == "player") then
+			self.playerUI:showStatus("Winner!")
+			self.enemyUI:showStatus("Loser :(")
+		elseif (result == "enemy") then
+			self.enemyUI:showStatus("Winner!")
+			self.playerUI:showStatus("Loser :(")
+		else
+			self.enemyUI:showStatus("TIE")
+			self.playerUI:showStatus("TIE")
+		end
+	else
+		-- NOT DONE, ENEMY'S TURN
+		self.playerUI:showStatus(evt.action)
+		self:setEnemyTurn()
+	end
+
 end
 
 function HitGame:enterReadyState()
@@ -98,9 +141,90 @@ function HitGame:enterReadyState()
 	self.playerUI:showReadyButton()
 end
 
+function HitGame:startGameIfReady( )
+	if (self.initiative ~= -1 and self.enemyInitiative ~= -1) then
+		self:startGame()
+	end
+end
+
 function HitGame:startGame()
-	self.gameState = self.MY_TURN	-- TODO: make this correct
-	self.enemyUI:showReady()
+	print("STARTING GAME:", self.initiative, self.enemyInitiative, self.id, self.enemyId)
+	if (self.initiative > self.enemyInitiative or
+		(self.initiative == self.enemyInitiative and self.id > self.enemyId)) then
+		self:setMyTurn()
+		self.playerUI:showStatus("Take Action")
+		self.enemyUI:showStatus("")
+	else
+		self:setEnemyTurn()
+		self.enemyUI:showStatus("Taking Action")
+		self.playerUI:showStatus("")
+	end
+end
+
+function HitGame:handleEnemyAction( action )
+	if (self.gameState == self.ENEMY_TURN) then
+		self.enemyAction = action
+		local result = self:isRoundComplete()
+		if (result) then
+			print("GAME OVER, winner:", self:isRoundComplete())
+			if (result == "player") then
+				self.playerUI:showStatus("Winner!")
+				self.enemyUI:showStatus("Loser :(")
+			elseif (result == "enemy") then
+				self.enemyUI:showStatus("Winner!")
+				self.playerUI:showStatus("Loser :(")
+			else
+				self.enemyUI:showStatus("TIE")
+				self.playerUI:showStatus("TIE")
+			end
+		else
+			-- NOT DONE, PLAYER'S TURN
+			self.enemyUI:showStatus("Action Chosen")
+			self:setMyTurn()
+		end
+	else
+		print("*** UNEXPECTED ACTION ***")
+	end
+end
+
+function HitGame:isRoundComplete()
+	if (self.enemyAction ~= nil and self.playerAction ~=nil) then
+		if (self.enemyAction == self.playerAction) then
+			return "tie"
+		elseif (self.enemyAction == "rock") then
+			if (self.playerAction == "scissors") then
+				return "enemy"
+			elseif (self.playerAction == "paper") then
+				return "player"
+			end
+		elseif (self.enemyAction == "paper") then
+			if (self.playerAction == "scissors") then
+				return "player"
+			elseif (self.playerAction == "rock") then
+				return "enemy"
+			end
+		elseif (self.enemyAction == "scissors") then
+			if (self.playerAction == "rock") then
+				return "player"
+			elseif (self.playerAction == "paper") then
+				return "enemy"
+			end
+		end
+	else
+		return false
+	end
+end
+
+function HitGame:setMyTurn()
+	self.gameState = self.MY_TURN
+	self.playerUI:indicateMyTurn()
+	self.enemyUI:indicateNotMyTurn()
+end
+
+function HitGame:setEnemyTurn()
+	self.gameState = self.ENEMY_TURN
+	self.enemyUI:indicateMyTurn()
+	self.playerUI:indicateNotMyTurn()
 end
 
 function HitGame:removeSelf()
