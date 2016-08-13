@@ -37,11 +37,13 @@ HitGame = class(function(c, width, height, createdByMe, composer)
 end)
 
 function HitGame:create(group)
+	self.composer.removeScene("hit_lobby_scene") -- Get rid of the lobby completely
 	self.gameDisplay = display.newGroup()
 
 	photonTool:setName(GLOBAL_NAME)
 	photonTool:addEventListener("actorJoined", self)
 	photonTool:addEventListener("receivedMessage", self)
+	photonTool:addEventListener("onDisconnected", self)
 
 	local background = display.newRect( 0, 0, self.width, self.height )
 	
@@ -117,17 +119,7 @@ function HitGame:takeAction(evt)
 	self.playerAction = evt.action
 	local result = self:isRoundComplete()
 	if (result) then
-		print("GAME OVER, winner:", self:isRoundComplete())
-		if (result == "player") then
-			self.playerUI:showStatus("Winner!")
-			self.enemyUI:showStatus("Loser :(")
-		elseif (result == "enemy") then
-			self.enemyUI:showStatus("Winner!")
-			self.playerUI:showStatus("Loser :(")
-		else
-			self.enemyUI:showStatus("TIE")
-			self.playerUI:showStatus("TIE")
-		end
+		self:handleGameOver(result)
 	else
 		-- NOT DONE, ENEMY'S TURN
 		self.playerUI:showStatus(evt.action)
@@ -162,21 +154,13 @@ function HitGame:startGame()
 end
 
 function HitGame:handleEnemyAction( action )
+	print("RECEIVED ENEMY ACTION:", self.gameState)
 	if (self.gameState == self.ENEMY_TURN) then
 		self.enemyAction = action
 		local result = self:isRoundComplete()
 		if (result) then
-			print("GAME OVER, winner:", self:isRoundComplete())
-			if (result == "player") then
-				self.playerUI:showStatus("Winner!")
-				self.enemyUI:showStatus("Loser :(")
-			elseif (result == "enemy") then
-				self.enemyUI:showStatus("Winner!")
-				self.playerUI:showStatus("Loser :(")
-			else
-				self.enemyUI:showStatus("TIE")
-				self.playerUI:showStatus("TIE")
-			end
+			print("handle enemy:", result)
+			self:handleGameOver(result)
 		else
 			-- NOT DONE, PLAYER'S TURN
 			self.enemyUI:showStatus("Action Chosen")
@@ -185,6 +169,32 @@ function HitGame:handleEnemyAction( action )
 	else
 		print("*** UNEXPECTED ACTION ***")
 	end
+end
+
+function HitGame:handleGameOver(result)
+	print("GAME OVER, winner:", self:isRoundComplete())
+	if (result == "player") then
+		self.playerUI:showStatus("Winner!")
+		self.enemyUI:showStatus("Loser :(")
+	elseif (result == "enemy") then
+		self.enemyUI:showStatus("Winner!")
+		self.playerUI:showStatus("Loser :(")
+	else
+		self.enemyUI:showStatus("TIE")
+		self.playerUI:showStatus("TIE")
+	end
+
+	local function listener( event )
+		photonTool:disconnect()
+	end
+
+	timer.performWithDelay( 3000, listener )
+	
+end
+
+function HitGame:onDisconnected( evt )
+	photonTool:reset()
+	self.composer.gotoScene( "hit_lobby_scene", { params = evt } )
 end
 
 function HitGame:isRoundComplete()

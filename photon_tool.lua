@@ -11,9 +11,18 @@ PhotonTool = class(function(c)
 	c.Logger = nil
 	c.photon = nil
 	c.client = nil
-	c.state = "none"
+
+	------ STATES ------
+	c.INITIALIZED = "initialized"
+	c.CREATED = "created"
+	c.CONNECTING = "connecting"
+	c.CONNECTED = "connected"
+	c.DISCONNECTED = "disconnected"
+	------ /STATES ------
+
+	c.state = c.INITIALIZED
 	hitTools:makeEventDispatcher(c)
-	-- c.events = {}
+
 	c.END_CONNECTION_CODE = 100 -- TODO: get rid of this
 	c.ENDCONNECTION = false -- TODO: get rid of this
 	c.basicRoomOptions = {
@@ -80,6 +89,7 @@ function PhotonTool:create()
 				name = "handleRoomList",
 				rooms = roomArray
 			}
+			--self.state = self.CONNECTED
 			tool:dispatchEvent(connectedEvent)
 			return
 		end
@@ -93,8 +103,13 @@ function PhotonTool:create()
 				name = "joinedLobby"
 			}
 			tool:dispatchEvent(joinedEvent)
-		end
-		if (state == tool.LoadBalancingClient.State.Error) then
+		elseif (state == tool.LoadBalancingClient.State.Disconnected) then
+			local disconnectedEvent = {
+				name = "onDisconnected"
+			}
+			self.state = self.DISCONNECTED
+			tool:dispatchEvent(disconnectedEvent)
+		elseif (state == tool.LoadBalancingClient.State.Error) then
 			print("ERROR!!!")
 			hitTools:printObject(state,4)
 		end
@@ -136,17 +151,22 @@ function PhotonTool:create()
 	end
 
 	self.client = client
-	self.state = "created"
+	self.state = self.CREATED
 end
 
 function PhotonTool:connect()
-	if (self.state == "created") then
+	print("calling connect:", self.state)
+	if (self.state == self.CREATED) then
 		self.client.logger:info("Start")
 		self.client:connect()
 		self.runTimes = 0
 		self.timerTable = timer.performWithDelay( 100, self, 0)	-- TODO: test that table can be used to cancel timer
-		self.state = "connecting"
+		self.state = self.CONNECTING
 	end
+end
+
+function PhotonTool:disconnect()
+	self.client:disconnect()
 end
 
 function PhotonTool:printAvailableRooms()
@@ -219,6 +239,12 @@ end
 function PhotonTool:getRoomActors()
 	print("ACTORS:")
 	hitTools:printObject(self.client:myRoomActors(), 5)
+end
+
+function PhotonTool:reset()
+	hitTools:removeEventDispatcher(self)
+	self.client:reset()
+	self.state = self.CREATED
 end
 
 function PhotonTool:removeSelf()

@@ -86,6 +86,13 @@ function HitTools:makeEventDispatcher(obj)
 end
 
 function HitTools:removeEventDispatcher(obj)
-	-- TODO: Implement this!
-	print("WE NEED TO REMOVE EVENT DISPATCHER")
+	for k, v in pairs(obj.events) do
+		for i=1, #v do
+			print("removing an event %%%%%%%")
+			obj.events[k][i] = nil
+		end
+		obj.events[k] = nil
+	end
+	obj.events = nil
+	obj.events = {}
 end

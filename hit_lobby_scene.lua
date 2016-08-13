@@ -13,6 +13,7 @@ local lobby
 
 -- Called when the scene's view does not exist:
 function scene:create( event )
+	print("creating lobby!")
 	local group = self.view
 	lobby = HitLobby(display.contentWidth, display.contentHeight, composer)
 	lobby:create(group)
@@ -21,7 +22,6 @@ end
 -- Called immediately after scene has moved onscreen:
 function scene:show( event )
 	local group = self.view
-	
 end
 
 -- Called when scene is about to move offscreen:

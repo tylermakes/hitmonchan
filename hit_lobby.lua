@@ -16,6 +16,7 @@ HitLobby = class(function(c, width, height, composer)
 end)
 
 function HitLobby:create(group)
+	self.composer.removeScene("hit_game_scene") -- Get rid of the previous game if there is one
 	self.lobbyDisplay = display.newGroup()
 	local background = display.newRect( 0, 0, self.width, self.height )
 	background:setFillColor( 0.2, 0.2, 0.4 )
@@ -114,6 +115,11 @@ function HitLobby:removeSelf()
 		self.background:removeSelf()
 		self.background = nil
 	end
+	if (self.createRoomButton) then
+		self.createRoomButton:removeSelf()
+		self.createRoomButton = nil
+	end
+	self:removeRoomButtons()
 	if (self.lobbyDisplay) then
 		self.lobbyDisplay:removeSelf()
 		self.lobbyDisplay = nil
